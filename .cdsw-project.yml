@@ -1,0 +1,50 @@
+# CDSW Project Configuration for UAT Generator
+name: "UAT Generator"
+description: "User Acceptance Testing Generator - Template-based test case generation"
+version: "1.0.0"
+
+# Environment Configuration
+environment:
+  python_version: "3.8"
+  cpu_limit: 2
+  memory_limit: "4Gi"
+  
+# Runtime Configuration
+runtime:
+  editor: "JupyterLab"
+  kernel: "Python 3"
+  
+# Application Settings
+applications:
+  - name: "UAT Generator Dashboard"
+    type: "web"
+    script: "app_cdsw.py"
+    cpu: 1
+    memory: "2Gi"
+    environment_variables:
+      CDSW_APP_PORT: "8090"
+      CDSW_PUBLIC_PORT: "8090"
+      FLASK_ENV: "production"
+
+# Dependencies
+dependencies:
+  - "Flask==3.0.3"
+  - "PyYAML==6.0.1"
+  - "psutil==5.9.8"
+  - "requests==2.31.0"
+
+# Build Configuration
+build:
+  script: "cdsw-build.sh"
+  timeout: 300
+
+# Health Check
+health_check:
+  endpoint: "/"
+  timeout: 30
+  interval: 60
+
+# Security Settings
+security:
+  allow_external_access: true
+  require_authentication: false

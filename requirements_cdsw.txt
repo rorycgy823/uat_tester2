@@ -1,0 +1,14 @@
+# CDSW-Specific Requirements for Phi-2 UAT Generator
+# Minimal dependencies for CPU-only Phi-2 model
+
+# Core web framework
+flask==2.3.3
+
+# GGUF model loading (CPU optimized)
+ctransformers==0.2.27
+
+# Basic utilities
+pyyaml==6.0.1
+
+# Optional: For better performance on CDSW
+numpy==1.24.3
