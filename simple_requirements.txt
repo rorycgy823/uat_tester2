@@ -1,0 +1,4 @@
+# Minimal requirements for the simple Phi-2 application
+# These versions are compatible with Python 3.6.
+Flask==1.1.4
+ctransformers==0.2.24
