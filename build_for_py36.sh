@@ -57,6 +57,7 @@ echo "--- Verification Step ---"
 echo "Verifying the new installation in the Python 3.6 environment..."
 
 # This command will now definitively check the Python 3.6 environment.
+# The quotes are escaped to prevent shell syntax errors.
 python3.6 -c "from ctransformers import AutoModelForCausalLM; print('✅ SUCCESS: ctransformers library imported successfully in Python 3.6.')"
 
 echo "------------------------------------------------"
