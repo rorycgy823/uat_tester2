@@ -1,0 +1,29 @@
+# =================================================================
+# Requirements for Python 3.6 Compatibility
+# =================================================================
+# These package versions are known to be compatible with Python 3.6
+# and should resolve the dependency conflicts you were facing.
+#
+# To install, run:
+# pip install -r requirements_py36.txt
+# =================================================================
+
+# --- Core ML/LLM Libraries ---
+# Older versions that support Python 3.6 and have the expected HfApi import.
+ctransformers==0.2.24
+huggingface-hub==0.11.1
+
+# --- Web Framework ---
+# Flask 1.x is the last major version to support Python 3.6.
+Flask==1.1.4
+
+# --- Common Data Science Libraries ---
+# Versions that are compatible with Python 3.6.
+numpy==1.19.5
+pandas==1.1.5
+
+# --- Other Dependencies ---
+# These are often installed automatically but are listed for clarity.
+pyyaml==5.4.1
+requests==2.25.1
+packaging==20.9
