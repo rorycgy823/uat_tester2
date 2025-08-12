@@ -17,6 +17,8 @@ Instructions:
 
 import os
 import logging
+import subprocess
+import time
 from flask import Flask, request, jsonify
 
 # --- Basic Configuration ---
@@ -204,15 +206,47 @@ def health_check():
     else:
         return jsonify({"status": "unhealthy", "model": "Model Not Loaded"}), 500
 
+def clear_port(port):
+    """
+    Finds and terminates any process using the specified port.
+    """
+    logger.info(f"--- Checking if port {port} is in use ---")
+    command = f"lsof -t -i:{port}"
+    try:
+        # Execute the command and capture the output
+        result = subprocess.run(command.split(), capture_output=True, text=True, check=False)
+        pid = result.stdout.strip()
+        
+        if pid:
+            logger.warning(f"Found old process with PID {pid} using port {port}.")
+            logger.warning("Terminating the old process...")
+            # Forcefully terminate the process
+            subprocess.run(f"kill -9 {pid}".split(), check=False)
+            # Wait a moment for the OS to release the port
+            time.sleep(2)
+            logger.info("Old process terminated successfully.")
+        else:
+            logger.info(f"Port {port} is free. No old process found.")
+            
+    except FileNotFoundError:
+        logger.warning("'lsof' command not found. Skipping port clearing. This might be okay if the environment is clean.")
+    except Exception as e:
+        logger.error(f"An error occurred while trying to clear port {port}: {e}")
+
 if __name__ == '__main__':
-    # Load the model on startup
+    # Get CDSW-provided host and port
+    host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
+    port = int(os.environ.get('CDSW_APP_PORT', 8080))
+
+    # --- Start of New Logic ---
+    # 1. Clear the port to prevent "Address already in use" errors.
+    clear_port(port)
+
+    # 2. Load the model.
     model_loaded = load_model()
     
+    # 3. If model is loaded, start the Flask server.
     if model_loaded:
-        # Get CDSW-provided host and port
-        host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
-        port = int(os.environ.get('CDSW_APP_PORT', 8080))
-        
         logger.info(f"Starting Flask server on {host}:{port}")
         app.run(host=host, port=port, debug=False)
     else:
