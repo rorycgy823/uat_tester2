@@ -84,14 +84,14 @@ app = Flask(__name__)
 # Simple CSS for better presentation
 STYLE_SHEET = """
 <style>
-    body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; color: #333; }
-    h1 { color: #4a4a8a; }
-    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    textarea { width: 95%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; font-size: 1em; }
-    input[type=submit] { background-color: #4a4a8a; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
-    .prompt, .answer { background-color: #f9f9f9; border-left: 5px solid #4a4a8a; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
-    .answer { border-left-color: #5cb85c; }
-    a { color: #4a4a8a; text-decoration: none; }
+    body {{ font-family: sans-serif; margin: 2em; background-color: #f4f4f9; color: #333; }}
+    h1 {{ color: #4a4a8a; }}
+    .container {{ max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+    textarea {{ width: 95%; padding: 10px; border-radius: 4px; border: 1px solid #ddd; font-size: 1em; }}
+    input[type=submit] {{ background-color: #4a4a8a; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }}
+    .prompt, .answer {{ background-color: #f9f9f9; border-left: 5px solid #4a4a8a; padding: 10px; margin-top: 20px; white-space: pre-wrap; }}
+    .answer {{ border-left-color: #5cb85c; }}
+    a {{ color: #4a4a8a; text-decoration: none; }}
 </style>
 """
 
