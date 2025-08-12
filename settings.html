@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Conversational AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Settings</h3>
+            </div>
+            <div class="session-list">
+                <a href="/" class="session-item">
+                    &larr; Back to Chat
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Prompt Template Settings</h2>
+            </div>
+            <div class="settings-content">
+                <p>
+                    Here you can adjust the prompt template used to instruct the AI.
+                    The string <code>{prompt}</code> will be replaced with your actual question.
+                </p>
+                <form action="/update_settings" method="post">
+                    <textarea name="prompt_template" rows="10">{{ prompt_template }}</textarea>
+                    <br><br>
+                    <div class="controls">
+                        <input type="submit" value="Save Template">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

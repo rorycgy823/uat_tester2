@@ -5,7 +5,7 @@ Conversational Phi-2 GGUF Model Server
 
 A Flask application with a chat UI to interact with a GGUF model.
 This version supports conversation history, session management,
-and adjustable parameters.
+and adjustable parameters including dynamic prompt templates.
 """
 
 import os
@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 
 # --- App Setup ---
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # Required for session management
+app.secret_key = 'supersecretkey'
 
-# --- Global variable to hold the model ---
+# --- Global variables ---
 llm = None
+PROMPT_TEMPLATE = "Instruct: {prompt}\nOutput:"
 
 # --- Session Management ---
 SESSION_DB = 'sessions.db'
@@ -44,9 +45,6 @@ def load_session(session_id):
 
 # --- Model Loading ---
 def load_model():
-    """
-    Finds and loads the GGUF model using llama-cpp-python.
-    """
     global llm
     try:
         from llama_cpp import Llama
@@ -89,11 +87,11 @@ def load_model():
 
 # --- Main Chat Logic ---
 def generate_response(prompt, max_tokens):
-    """
-    Generates a response from the model, including chat history.
-    """
     history = session.get('chat_history', [])
-    history.append(f"Instruct: {prompt}\nOutput:")
+    
+    # Use the global prompt template
+    formatted_prompt = PROMPT_TEMPLATE.format(prompt=prompt)
+    history.append(formatted_prompt)
     
     full_prompt = "\n".join(history)
     
@@ -117,7 +115,6 @@ def generate_response(prompt, max_tokens):
 # --- Web UI Routes ---
 @app.route('/')
 def main_page():
-    """Serves the main chat UI, starting a new session if needed."""
     if 'session_id' not in session:
         session['session_id'] = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         session['chat_history'] = []
@@ -129,14 +126,12 @@ def main_page():
 
 @app.route('/session/<session_id>')
 def view_session(session_id):
-    """Loads and displays a specific past session."""
     session['session_id'] = session_id
     session['chat_history'] = load_session(session_id)
     return redirect(url_for('main_page'))
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    """Handles a new chat message from the user."""
     if llm is None: return "Model is not loaded.", 503
 
     prompt = request.form.get('prompt', '')
@@ -150,12 +145,25 @@ def ask_question():
 
 @app.route('/save_session', methods=['POST'])
 def save_current_session():
-    """Saves the current chat history to the database."""
     session_id = session.get('session_id')
     history = session.get('chat_history', [])
     if session_id and history:
         save_session(session_id, history)
     return redirect(url_for('main_page'))
+
+@app.route('/settings', methods=['GET'])
+def settings_page():
+    """Displays the settings page."""
+    return render_template("settings.html", prompt_template=PROMPT_TEMPLATE)
+
+@app.route('/update_settings', methods=['POST'])
+def update_settings():
+    """Updates the global prompt template."""
+    global PROMPT_TEMPLATE
+    new_template = request.form.get('prompt_template')
+    if new_template:
+        PROMPT_TEMPLATE = new_template
+    return redirect(url_for('settings_page'))
 
 # --- Custom Server with Port Reuse ---
 class ReusableThreadedWSGIServer(ThreadedWSGIServer):

@@ -17,6 +17,9 @@
                 <a href="/" class="session-item {% if not current_session_id %}active{% endif %}">
                     + New Chat
                 </a>
+                <a href="/settings" class="session-item">
+                    &#9881; Settings
+                </a>
                 {% for session_id in sessions %}
                     <a href="/session/{{ session_id }}" class="session-item {% if session_id == current_session_id %}active{% endif %}">
                         {{ session_id }}
