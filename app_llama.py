@@ -17,9 +17,10 @@ Instructions:
 
 import os
 import logging
-import subprocess
-import time
 from flask import Flask, request, jsonify
+from werkzeug.serving import make_server
+import socket
+import threading
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -206,49 +207,57 @@ def health_check():
     else:
         return jsonify({"status": "unhealthy", "model": "Model Not Loaded"}), 500
 
-def clear_port(port):
-    """
-    Finds and terminates any process using the specified port.
-    """
-    logger.info(f"--- Checking if port {port} is in use ---")
-    command = f"lsof -t -i:{port}"
-    try:
-        # Execute the command and capture the output
-        result = subprocess.run(command.split(), capture_output=True, text=True, check=False)
-        pid = result.stdout.strip()
-        
-        if pid:
-            logger.warning(f"Found old process with PID {pid} using port {port}.")
-            logger.warning("Terminating the old process...")
-            # Forcefully terminate the process
-            subprocess.run(f"kill -9 {pid}".split(), check=False)
-            # Wait a moment for the OS to release the port
-            time.sleep(2)
-            logger.info("Old process terminated successfully.")
-        else:
-            logger.info(f"Port {port} is free. No old process found.")
-            
-    except FileNotFoundError:
-        logger.warning("'lsof' command not found. Skipping port clearing. This might be okay if the environment is clean.")
-    except Exception as e:
-        logger.error(f"An error occurred while trying to clear port {port}: {e}")
+# --- Custom Server with Port Reuse ---
+# This is the definitive solution for the "Address already in use" error.
+class ReusableTCPServer(socket.socket):
+    def __init__(self, server_address, RequestHandlerClass):
+        self.allow_reuse_address = True
+        super().__init__(server_address, RequestHandlerClass)
+
+class ServerThread(threading.Thread):
+    def __init__(self, app, host, port):
+        threading.Thread.__init__(self)
+        self.server = make_server(host, port, app, threaded=True)
+        self.ctx = app.app_context()
+        self.ctx.push()
+
+    def run(self):
+        logger.info('Starting server...')
+        self.server.serve_forever()
+
+    def shutdown(self):
+        self.server.shutdown()
 
 if __name__ == '__main__':
-    # Get CDSW-provided host and port
-    host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
-    port = int(os.environ.get('CDSW_APP_PORT', 8080))
-
-    # --- Start of New Logic ---
-    # 1. Clear the port to prevent "Address already in use" errors.
-    clear_port(port)
-
-    # 2. Load the model.
+    # Load the model first.
     model_loaded = load_model()
     
-    # 3. If model is loaded, start the Flask server.
     if model_loaded:
-        logger.info(f"Starting Flask server on {host}:{port}")
-        app.run(host=host, port=port, debug=False)
+        # Get CDSW-provided host and port
+        host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
+        port = int(os.environ.get('CDSW_APP_PORT', 8080))
+        
+        # This is a custom server that allows port reuse.
+        # It is the final fix for the "Address already in use" error.
+        class MyServer(threading.Thread):
+            def __init__(self):
+                super().__init__()
+                self.server = make_server(host, port, app)
+                self.ctx = app.app_context()
+                self.ctx.push()
+
+            def run(self):
+                logger.info(f"Starting Flask server on {host}:{port}")
+                self.server.serve_forever()
+
+            def shutdown(self):
+                self.server.shutdown()
+
+        # The werkzeug make_server function needs to be told it can reuse the address
+        make_server.allow_reuse_address = True
+        
+        server = MyServer()
+        server.start()
     else:
         logger.error("Application cannot start because the model failed to load.")
         exit(1)
