@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""
+Simple Phi-2 GGUF Model Server using llama-cpp-python
+======================================================
+
+A minimal Flask application to load a GGUF model and serve it.
+This script is designed for Python 3.10 and uses the robust
+llama-cpp-python library.
+
+Instructions:
+1. Build and install llama-cpp-python using the build_llama_cpp.sh script.
+2. Install other requirements:
+   python3.10 -m pip install -r requirements_llama.txt
+3. Place your 'phi-2.Q4_K_M.gguf' model file in the project directory.
+4. Run as a CDSW Application, pointing to this script.
+"""
+
+import os
+import logging
+from flask import Flask, request, jsonify
+
+# --- Basic Configuration ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Global variable to hold the model
+llm = None
+
+def load_model():
+    """
+    Finds and loads the GGUF model using llama-cpp-python.
+    """
+    global llm
+    
+    try:
+        from llama_cpp import Llama
+    except ImportError:
+        logger.error("FATAL: llama-cpp-python library not found.")
+        logger.error("Please build and install it using the build_llama_cpp.sh script.")
+        return False
+
+    # Find the model file
+    model_filename = "phi-2.Q4_K_M.gguf"
+    model_path = None
+    
+    possible_paths = [
+        model_filename,
+        f"/home/cdsw/{model_filename}",
+        f"/home/cdsw/models/{model_filename}",
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            model_path = path
+            logger.info(f"Found GGUF model at: {model_path}")
+            break
+            
+    if not model_path:
+        logger.error(f"FATAL: Could not find the model file '{model_filename}'.")
+        return False
+
+    # Load the model using llama-cpp-python syntax
+    try:
+        logger.info("Loading Phi-2 GGUF model with llama-cpp-python...")
+        llm = Llama(
+            model_path=model_path,
+            n_ctx=2048,      # Context length
+            n_threads=4,     # Number of CPU threads to use
+            n_gpu_layers=0   # Ensure CPU-only operation
+        )
+        logger.info("✅ Model loaded successfully!")
+        return True
+    except Exception as e:
+        logger.error("FATAL: Failed to load the model with llama-cpp-python.")
+        logger.error(f"Error details: {e}")
+        return False
+
+# --- Flask Application ---
+app = Flask(__name__)
+
+@app.route('/generate', methods=['POST'])
+def generate_text():
+    """
+    The main generation endpoint.
+    """
+    if llm is None:
+        return jsonify({"error": "Model is not loaded or failed to load."}), 503
+
+    try:
+        data = request.get_json()
+        prompt = data.get('prompt', '')
+        
+        if not prompt:
+            return jsonify({"error": "Request must include a 'prompt'."}), 400
+            
+        logger.info(f"Generating text for prompt: '{prompt[:80]}'...")
+        
+        # Generate text using the llama-cpp-python model
+        output = llm(
+            prompt,
+            max_tokens=256,
+            temperature=0.7,
+            top_p=0.9,
+            repeat_penalty=1.1,
+            stop=["</end>", "[END]"]
+        )
+        
+        generated_text = output["choices"][0]["text"]
+        
+        logger.info("Generation complete.")
+        
+        return jsonify({
+            "prompt": prompt,
+            "generated_text": generated_text
+        })
+
+    except Exception as e:
+        logger.error(f"An error occurred during generation: {e}")
+        return jsonify({"error": "An internal error occurred."}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """A simple health check endpoint."""
+    if llm is not None:
+        return jsonify({"status": "healthy", "model": "Phi-2 GGUF Loaded (llama-cpp)"}), 200
+    else:
+        return jsonify({"status": "unhealthy", "model": "Model Not Loaded"}), 500
+
+if __name__ == '__main__':
+    # Load the model on startup
+    model_loaded = load_model()
+    
+    if model_loaded:
+        # Get CDSW-provided host and port
+        host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
+        port = int(os.environ.get('CDSW_APP_PORT', 8080))
+        
+        logger.info(f"Starting Flask server on {host}:{port}")
+        app.run(host=host, port=port, debug=False)
+    else:
+        logger.error("Application cannot start because the model failed to load.")
+        exit(1)
