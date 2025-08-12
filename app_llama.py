@@ -18,9 +18,8 @@ Instructions:
 import os
 import logging
 from flask import Flask, request, jsonify
-from werkzeug.serving import make_server
+from werkzeug.serving import ThreadedWSGIServer
 import socket
-import threading
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -208,25 +207,12 @@ def health_check():
         return jsonify({"status": "unhealthy", "model": "Model Not Loaded"}), 500
 
 # --- Custom Server with Port Reuse ---
-# This is the definitive solution for the "Address already in use" error.
-class ReusableTCPServer(socket.socket):
-    def __init__(self, server_address, RequestHandlerClass):
-        self.allow_reuse_address = True
-        super().__init__(server_address, RequestHandlerClass)
-
-class ServerThread(threading.Thread):
-    def __init__(self, app, host, port):
-        threading.Thread.__init__(self)
-        self.server = make_server(host, port, app, threaded=True)
-        self.ctx = app.app_context()
-        self.ctx.push()
-
-    def run(self):
-        logger.info('Starting server...')
-        self.server.serve_forever()
-
-    def shutdown(self):
-        self.server.shutdown()
+# This is the definitive, correct solution for the "Address already in use" error.
+class ReusableThreadedWSGIServer(ThreadedWSGIServer):
+    def __init__(self, host, port, app):
+        super().__init__(host, port, app)
+        # This is the key: it tells the OS to allow reusing a port in a "wait" state.
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 if __name__ == '__main__':
     # Load the model first.
@@ -237,27 +223,13 @@ if __name__ == '__main__':
         host = os.environ.get('CDSW_IP_ADDRESS', '127.0.0.1')
         port = int(os.environ.get('CDSW_APP_PORT', 8080))
         
-        # This is a custom server that allows port reuse.
-        # It is the final fix for the "Address already in use" error.
-        class MyServer(threading.Thread):
-            def __init__(self):
-                super().__init__()
-                self.server = make_server(host, port, app)
-                self.ctx = app.app_context()
-                self.ctx.push()
-
-            def run(self):
-                logger.info(f"Starting Flask server on {host}:{port}")
-                self.server.serve_forever()
-
-            def shutdown(self):
-                self.server.shutdown()
-
-        # The werkzeug make_server function needs to be told it can reuse the address
-        make_server.allow_reuse_address = True
+        logger.info(f"Starting Flask server on {host}:{port}")
         
-        server = MyServer()
-        server.start()
+        # Instantiate our custom server
+        httpd = ReusableThreadedWSGIServer(host, port, app)
+        
+        # Run the server
+        httpd.serve_forever()
     else:
         logger.error("Application cannot start because the model failed to load.")
         exit(1)
