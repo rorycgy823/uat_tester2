@@ -17,9 +17,6 @@
                 <a href="/" class="session-item {% if not current_session_id %}active{% endif %}">
                     + New Chat
                 </a>
-                <a href="/settings" class="session-item">
-                    &#9881; Settings
-                </a>
                 {% for session_id in sessions %}
                     <a href="/session/{{ session_id }}" class="session-item {% if session_id == current_session_id %}active{% endif %}">
                         {{ session_id }}
@@ -32,9 +29,12 @@
         <div class="chat-container">
             <div class="chat-header">
                 <h2>Phi-2 Conversational AI</h2>
-                <form action="/save_session" method="post" style="display: inline;">
-                    <button type="submit" class="save-button">Save Session</button>
-                </form>
+                <div>
+                    <form action="/save_session" method="post" style="display: inline; margin-right: 10px;">
+                        <button type="submit" class="save-button">Save Session</button>
+                    </form>
+                    <a href="/settings" class="settings-button">&#9881;</a>
+                </div>
             </div>
             <div class="chat-box" id="chat-box">
                 {% for message in history %}

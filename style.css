@@ -105,6 +105,23 @@ body {
     background-color: #4cae4c;
 }
 
+.settings-button {
+    display: inline-block;
+    background-color: #777;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 1.2em;
+    line-height: 1;
+    vertical-align: middle;
+    transition: background-color 0.3s;
+}
+
+.settings-button:hover {
+    background-color: #555;
+}
+
 /* Chat Box */
 .chat-box {
     flex-grow: 1;
