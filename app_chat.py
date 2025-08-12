@@ -4,23 +4,45 @@ Conversational Phi-2 GGUF Model Server
 =======================================
 
 A Flask application with a chat UI to interact with a GGUF model.
-This version supports conversation history and adjustable parameters.
+This version supports conversation history, session management,
+and adjustable parameters.
 """
 
 import os
 import logging
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from werkzeug.serving import ThreadedWSGIServer
 import socket
+import shelve
+from datetime import datetime
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Global variable to hold the model and chat history
-llm = None
-chat_history = []
+# --- App Setup ---
+app = Flask(__name__)
+app.secret_key = 'supersecretkey'  # Required for session management
 
+# --- Global variable to hold the model ---
+llm = None
+
+# --- Session Management ---
+SESSION_DB = 'sessions.db'
+
+def get_all_sessions():
+    with shelve.open(SESSION_DB) as db:
+        return sorted(db.keys(), reverse=True)
+
+def save_session(session_id, history):
+    with shelve.open(SESSION_DB) as db:
+        db[session_id] = history
+
+def load_session(session_id):
+    with shelve.open(SESSION_DB) as db:
+        return db.get(session_id, [])
+
+# --- Model Loading ---
 def load_model():
     """
     Finds and loads the GGUF model using llama-cpp-python.
@@ -30,7 +52,6 @@ def load_model():
         from llama_cpp import Llama
     except ImportError:
         logger.error("FATAL: llama-cpp-python library not found.")
-        logger.error("Please build and install it using the build_llama_cpp.sh script.")
         return False
 
     model_filename = "phi-2.Q4_K_M.gguf"
@@ -66,21 +87,15 @@ def load_model():
         logger.error(f"Error details: {e}")
         return False
 
-# --- Flask Application ---
-app = Flask(__name__)
-
 # --- Main Chat Logic ---
 def generate_response(prompt, max_tokens):
     """
     Generates a response from the model, including chat history.
     """
-    global chat_history
+    history = session.get('chat_history', [])
+    history.append(f"Instruct: {prompt}\nOutput:")
     
-    # Add the new user prompt to the history
-    chat_history.append(f"Instruct: {prompt}\nOutput:")
-    
-    # Create the full prompt by joining the history
-    full_prompt = "\n".join(chat_history)
+    full_prompt = "\n".join(history)
     
     logger.info(f"Generating response with max_tokens={max_tokens}...")
     
@@ -94,39 +109,52 @@ def generate_response(prompt, max_tokens):
     )
     
     answer = output["choices"][0]["text"].strip()
-    
-    # Add the model's answer to the history
-    chat_history.append(answer)
+    history.append(answer)
+    session['chat_history'] = history
     
     return answer
 
 # --- Web UI Routes ---
-@app.route('/', methods=['GET'])
+@app.route('/')
 def main_page():
-    """Serves the main chat UI."""
-    return render_template("index.html", history=chat_history)
+    """Serves the main chat UI, starting a new session if needed."""
+    if 'session_id' not in session:
+        session['session_id'] = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        session['chat_history'] = []
+    
+    return render_template("index.html", 
+                           sessions=get_all_sessions(),
+                           current_session_id=session['session_id'],
+                           history=session['chat_history'])
+
+@app.route('/session/<session_id>')
+def view_session(session_id):
+    """Loads and displays a specific past session."""
+    session['session_id'] = session_id
+    session['chat_history'] = load_session(session_id)
+    return redirect(url_for('main_page'))
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
     """Handles a new chat message from the user."""
-    if llm is None:
-        return "Model is not loaded.", 503
+    if llm is None: return "Model is not loaded.", 503
 
     prompt = request.form.get('prompt', '')
     max_tokens = int(request.form.get('max_tokens', 256))
     
-    if not prompt:
-        return "Please provide a prompt.", 400
+    if not prompt: return "Please provide a prompt.", 400
 
     generate_response(prompt, max_tokens)
     
     return redirect(url_for('main_page'))
 
-@app.route('/new_chat', methods=['GET'])
-def new_chat():
-    """Clears the chat history and starts a new conversation."""
-    global chat_history
-    chat_history = []
+@app.route('/save_session', methods=['POST'])
+def save_current_session():
+    """Saves the current chat history to the database."""
+    session_id = session.get('session_id')
+    history = session.get('chat_history', [])
+    if session_id and history:
+        save_session(session_id, history)
     return redirect(url_for('main_page'))
 
 # --- Custom Server with Port Reuse ---

@@ -9,17 +9,69 @@ body {
     height: 100vh;
 }
 
-/* Main Chat Container */
-.chat-container {
-    width: 90%;
-    max-width: 800px;
-    height: 90vh;
+/* Main container for the two-column layout */
+.main-container {
+    display: flex;
+    width: 95%;
+    max-width: 1200px;
+    height: 95vh;
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Sidebar for Session History */
+.sidebar {
+    width: 250px;
+    background-color: #f7f7f7;
+    border-right: 1px solid #ddd;
     display: flex;
     flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.session-list {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.session-item {
+    display: block;
+    padding: 12px 15px;
+    color: #333;
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.session-item:hover {
+    background-color: #e9e9eb;
+}
+
+.session-item.active {
+    background-color: #4a4a8a;
+    color: white;
+    font-weight: bold;
+}
+
+/* Main Chat Container */
+.chat-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Chat Header */
@@ -38,21 +90,22 @@ body {
     font-size: 1.2em;
 }
 
-.chat-header a {
+.save-button {
+    background-color: #5cb85c;
     color: white;
-    text-decoration: none;
-    font-size: 0.9em;
-    padding: 5px 10px;
-    border: 1px solid white;
+    border: none;
+    padding: 8px 15px;
     border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
     transition: background-color 0.3s;
 }
 
-.chat-header a:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+.save-button:hover {
+    background-color: #4cae4c;
 }
 
-/* Chat Box - where messages appear */
+/* Chat Box */
 .chat-box {
     flex-grow: 1;
     padding: 20px;
@@ -73,7 +126,6 @@ body {
     margin: 0;
 }
 
-/* User's Chat Bubble */
 .chat-bubble.user {
     background-color: #007bff;
     color: white;
@@ -81,12 +133,22 @@ body {
     border-bottom-right-radius: 4px;
 }
 
-/* AI's Chat Bubble */
 .chat-bubble.ai {
     background-color: #e9e9eb;
     color: #333;
     margin-right: auto;
     border-bottom-left-radius: 4px;
+}
+
+/* "Thinking" indicator bubble */
+.chat-bubble.thinking p {
+    font-style: italic;
+    color: #888;
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0.5; }
 }
 
 /* Chat Input Area */
@@ -111,7 +173,6 @@ body {
     margin-bottom: 10px;
 }
 
-/* Controls for Max Tokens and Send Button */
 .controls {
     display: flex;
     justify-content: flex-end;
@@ -145,4 +206,9 @@ body {
 
 .controls input[type="submit"]:hover {
     background-color: #0056b3;
+}
+
+.controls input[type="submit"]:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
 }

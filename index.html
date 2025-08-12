@@ -7,39 +7,79 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <h2>Phi-2 Conversational AI</h2>
-            <a href="/new_chat">New Chat</a>
+    <div class="main-container">
+        <!-- Sidebar for Session History -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Chat History</h3>
+            </div>
+            <div class="session-list">
+                <a href="/" class="session-item {% if not current_session_id %}active{% endif %}">
+                    + New Chat
+                </a>
+                {% for session_id in sessions %}
+                    <a href="/session/{{ session_id }}" class="session-item {% if session_id == current_session_id %}active{% endif %}">
+                        {{ session_id }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="chat-box" id="chat-box">
-            {% for message in history %}
-                {% if message.startswith('Instruct:') %}
-                    <div class="chat-bubble user">
-                        <p>{{ message.replace('Instruct:', '').replace('\nOutput:', '').strip() }}</p>
+
+        <!-- Main Chat Area -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Phi-2 Conversational AI</h2>
+                <form action="/save_session" method="post" style="display: inline;">
+                    <button type="submit" class="save-button">Save Session</button>
+                </form>
+            </div>
+            <div class="chat-box" id="chat-box">
+                {% for message in history %}
+                    {% if message.startswith('Instruct:') %}
+                        <div class="chat-bubble user">
+                            <p>{{ message.replace('Instruct:', '').replace('\nOutput:', '').strip() }}</p>
+                        </div>
+                    {% else %}
+                        <div class="chat-bubble ai">
+                            <p>{{ message }}</p>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <div class="chat-input">
+                <form action="/ask" method="post" id="chat-form">
+                    <textarea name="prompt" placeholder="Ask a follow-up question..." rows="3"></textarea>
+                    <div class="controls">
+                        <label for="max_tokens">Max Tokens:</label>
+                        <input type="number" id="max_tokens" name="max_tokens" value="256" min="16" max="1024">
+                        <input type="submit" value="Send" id="send-button">
                     </div>
-                {% else %}
-                    <div class="chat-bubble ai">
-                        <p>{{ message }}</p>
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-        <div class="chat-input">
-            <form action="/ask" method="post" id="chat-form">
-                <textarea name="prompt" placeholder="Ask a follow-up question..." rows="3"></textarea>
-                <div class="controls">
-                    <label for="max_tokens">Max Tokens:</label>
-                    <input type="number" id="max_tokens" name="max_tokens" value="256" min="16" max="1024">
-                    <input type="submit" value="Send">
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
+
     <script>
         // Auto-scroll to the bottom of the chat box
         const chatBox = document.getElementById('chat-box');
         chatBox.scrollTop = chatBox.scrollHeight;
+
+        // "AI is thinking..." indicator
+        const chatForm = document.getElementById('chat-form');
+        const sendButton = document.getElementById('send-button');
+
+        chatForm.addEventListener('submit', function() {
+            // Disable the button
+            sendButton.disabled = true;
+            sendButton.value = "Thinking...";
+
+            // Create and add the "thinking" bubble
+            const thinkingBubble = document.createElement('div');
+            thinkingBubble.className = 'chat-bubble ai thinking';
+            thinkingBubble.innerHTML = '<p>...</p>';
+            chatBox.appendChild(thinkingBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
     </script>
 </body>
 </html>
