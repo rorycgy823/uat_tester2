@@ -1,0 +1,21 @@
+# =================================================================
+# Requirements for Python 3.10
+# =================================================================
+# These are modern, stable package versions that are fully
+# compatible with Python 3.10.
+#
+# To install, run:
+# python3.10 -m pip install -r requirements_py310.txt
+# =================================================================
+
+# --- Core ML/LLM Libraries ---
+# A recent, stable version of ctransformers.
+ctransformers==0.2.27
+
+# --- Web Framework ---
+Flask==2.3.3
+
+# --- Other Common Dependencies ---
+# These are generally required and good to have specified.
+numpy
+pandas
