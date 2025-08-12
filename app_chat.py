@@ -12,6 +12,7 @@ import os
 import logging
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from werkzeug.serving import ThreadedWSGIServer
+from werkzeug.utils import secure_filename
 import socket
 import shelve
 from datetime import datetime
@@ -145,22 +146,21 @@ def ask_question():
 
 @app.route('/save_session', methods=['POST'])
 def save_current_session():
-    """Saves the current chat history with a user-friendly name."""
+    """Saves the current chat history with a user-friendly, URL-safe name."""
     history = session.get('chat_history', [])
     if history:
         # Create a name from the first user prompt
         first_prompt = history[0].replace('Instruct:', '').replace('\nOutput:', '').strip()
-        session_name = f"{first_prompt[:30]}..."
         
-        # Use a timestamp as the unique ID
-        session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # Make the name URL-safe and add a timestamp for uniqueness
+        safe_name = secure_filename(first_prompt[:30])
+        session_id = f"{datetime.now().strftime('%Y%m%d-%H%M')}_{safe_name}"
         
-        # Save the session with the user-friendly name as the key
-        save_session(session_name, history)
+        save_session(session_id, history)
         
         # Start a new session after saving
-        session['session_id'] = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        session['chat_history'] = []
+        session.pop('session_id', None)
+        session.pop('chat_history', None)
         
     return redirect(url_for('main_page'))
 
