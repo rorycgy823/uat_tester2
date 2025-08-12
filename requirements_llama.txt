@@ -1,0 +1,17 @@
+# =================================================================
+# Requirements for llama-cpp-python on Python 3.10
+# =================================================================
+#
+# To install, run:
+# python3.10 -m pip install -r requirements_llama.txt
+# =================================================================
+
+# --- Core LLM Library ---
+# We will build this from source, but it's good to have it listed.
+llama-cpp-python==0.2.20
+
+# --- Web Framework ---
+Flask==2.3.3
+
+# --- Other Common Dependencies ---
+numpy
