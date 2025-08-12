@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversational AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Phi-2 Conversational AI</h2>
+            <a href="/new_chat">New Chat</a>
+        </div>
+        <div class="chat-box" id="chat-box">
+            {% for message in history %}
+                {% if message.startswith('Instruct:') %}
+                    <div class="chat-bubble user">
+                        <p>{{ message.replace('Instruct:', '').replace('\nOutput:', '').strip() }}</p>
+                    </div>
+                {% else %}
+                    <div class="chat-bubble ai">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="chat-input">
+            <form action="/ask" method="post" id="chat-form">
+                <textarea name="prompt" placeholder="Ask a follow-up question..." rows="3"></textarea>
+                <div class="controls">
+                    <label for="max_tokens">Max Tokens:</label>
+                    <input type="number" id="max_tokens" name="max_tokens" value="256" min="16" max="1024">
+                    <input type="submit" value="Send">
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        // Auto-scroll to the bottom of the chat box
+        const chatBox = document.getElementById('chat-box');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    </script>
+</body>
+</html>
