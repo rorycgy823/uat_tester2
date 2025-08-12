@@ -21,7 +21,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # --- App Setup ---
-# Explicitly set template and static folder locations for robustness
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'supersecretkey'
 
@@ -146,10 +145,23 @@ def ask_question():
 
 @app.route('/save_session', methods=['POST'])
 def save_current_session():
-    session_id = session.get('session_id')
+    """Saves the current chat history with a user-friendly name."""
     history = session.get('chat_history', [])
-    if session_id and history:
-        save_session(session_id, history)
+    if history:
+        # Create a name from the first user prompt
+        first_prompt = history[0].replace('Instruct:', '').replace('\nOutput:', '').strip()
+        session_name = f"{first_prompt[:30]}..."
+        
+        # Use a timestamp as the unique ID
+        session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Save the session with the user-friendly name as the key
+        save_session(session_name, history)
+        
+        # Start a new session after saving
+        session['session_id'] = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        session['chat_history'] = []
+        
     return redirect(url_for('main_page'))
 
 @app.route('/settings', methods=['GET'])
