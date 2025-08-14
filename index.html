@@ -12,7 +12,9 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h3>Chat History</h3>
-                <a href="/" class="new-chat-button">+ New Chat</a>
+                <form action="/new_chat" method="get" style="margin-top: 10px;">
+                    <button type="submit" class="new-chat-button">+ New Chat</button>
+                </form>
             </div>
             <div class="session-list">
                 {% for session_id in sessions %}
@@ -60,6 +62,12 @@
                     </div>
                 </form>
             </div>
+            {% if timings %}
+            <div class="timings-container">
+                <h4>Performance Timings</h4>
+                <pre>{{ timings }}</pre>
+            </div>
+            {% endif %}
         </div>
     </div>
 

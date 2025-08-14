@@ -10,6 +10,8 @@ and adjustable parameters including dynamic prompt templates.
 
 import os
 import logging
+import io
+import sys
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from werkzeug.serving import ThreadedWSGIServer
 from werkzeug.utils import secure_filename
@@ -102,7 +104,11 @@ def generate_response(prompt, max_tokens):
     full_prompt = "\n".join(history)
     
     logger.info(f"Generating response with max_tokens={max_tokens}...")
-    
+
+    # Capture llama_print_timings
+    old_stdout = sys.stdout
+    sys.stdout = captured_output = io.StringIO()
+
     output = llm(
         full_prompt,
         max_tokens=max_tokens,
@@ -111,30 +117,49 @@ def generate_response(prompt, max_tokens):
         repeat_penalty=1.1,
         stop=["</end>", "[END]", "Instruct:"]
     )
+
+    sys.stdout = old_stdout
+    timings = captured_output.getvalue()
+    logger.info(f"Performance Timings:\n{timings}")
     
     answer = output["choices"][0]["text"].strip()
     history.append(answer)
     session['chat_history'] = history
+    session['timings'] = timings # Store timings in session
     
     return answer
 
 # --- Web UI Routes ---
 @app.route('/')
 def main_page():
-    if 'session_id' not in session or not session['session_id']:
-        # Start a new, unsaved session
-        session['session_id'] = None 
+    if 'session_id' not in session:
+        # Initialize a new session
+        session['session_id'] = None
         session['chat_history'] = []
+        session['timings'] = ''
     
     return render_template("index.html", 
                            sessions=get_all_sessions(),
                            current_session_id=session.get('session_id'),
-                           history=session.get('chat_history', []))
+                           history=session.get('chat_history', []),
+                           timings=session.get('timings', ''))
 
 @app.route('/new_chat')
 def new_chat():
+    # Save the old session before creating a new one
+    history = session.get('chat_history', [])
+    if history:
+        session_id = session.get('session_id')
+        if not session_id:
+            first_prompt = history[0].replace('Instruct:', '').replace('\nOutput:', '').strip()
+            safe_name = secure_filename(first_prompt[:30])
+            session_id = f"{datetime.now().strftime('%Y%m%d-%H%M')}_{safe_name}"
+        save_session(session_id, history)
+
+    # Clear the session to start fresh
     session.pop('session_id', None)
     session.pop('chat_history', None)
+    session.pop('timings', None)
     return redirect(url_for('main_page'))
 
 @app.route('/session/<session_id>')
@@ -176,15 +201,17 @@ def save_current_session():
 @app.route('/delete_session/<session_id>', methods=['GET'])
 def delete_session_route(session_id):
     """Deletes a specific session."""
+    active_session_id = session.get('session_id')
     delete_session(session_id)
     # If the deleted session was the active one, start a new chat
-    if session.get('session_id') == session_id:
+    if active_session_id == session_id:
         return redirect(url_for('new_chat'))
     return redirect(url_for('main_page'))
 
 @app.route('/settings', methods=['GET'])
 def settings_page():
     """Displays the settings page."""
+    # Ensure the global variable is passed correctly
     return render_template("settings.html", prompt_template=PROMPT_TEMPLATE)
 
 @app.route('/update_settings', methods=['POST'])

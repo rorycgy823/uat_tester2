@@ -42,13 +42,16 @@ body {
 
 .new-chat-button {
     display: block;
+    width: 100%;
     background-color: #007bff;
     color: white;
-    padding: 8px 15px;
+    padding: 10px 15px;
     border-radius: 5px;
     text-decoration: none;
     text-align: center;
-    margin-top: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
     transition: background-color 0.3s;
 }
 
@@ -267,4 +270,26 @@ body {
 .controls input[type="submit"]:disabled {
     background-color: #aaa;
     cursor: not-allowed;
+}
+
+/* Timings Container */
+.timings-container {
+    padding: 10px 20px;
+    background-color: #f0f2f5;
+    border-top: 1px solid #ddd;
+}
+
+.timings-container h4 {
+    margin: 0 0 5px 0;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.timings-container pre {
+    margin: 0;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    color: #333;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
