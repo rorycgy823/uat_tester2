@@ -32,17 +32,40 @@ app.secret_key = 'supersecretkey'
 llm = None
 PROMPT_TEMPLATE = "Instruct: {prompt}\nOutput:"
 
-# --- GraphRAG Integration (Placeholder) ---
-# This would be replaced with actual GraphRAG loading and querying logic
-def load_uat_index():
-    """Placeholder for loading the GraphRAG index."""
-    # In a real implementation, this would load the index from disk
-    return "mock_index"
+# --- GraphRAG Integration ---
+from graphrag.query.cli import run_query_with_config
+from graphrag.config import create_graphrag_config
+import asyncio
 
-def query_uat_document(index, user_query):
-    """Placeholder for querying the GraphRAG index."""
-    # In a real implementation, this would query the index
-    return f"Generated UAT document for query: '{user_query}'\n\n[This is a placeholder response from the GraphRAG system. In a full implementation, this would contain the actual generated UAT content based on your indexed documents.]"
+# This is a simplified integration. In a production app, you might want to
+# manage the asyncio event loop more carefully.
+def query_graphrag(user_query):
+    """
+    Runs a GraphRAG query and returns the result.
+    """
+    INDEX_DIR = "uat_graphrag_index"
+    LLM_MODEL_PATH = "path/to/your/model.gguf" # TODO: Update this path
+
+    if not os.path.exists(INDEX_DIR):
+        return "Error: GraphRAG index not found. Please run 'prepare_uat_index.py' first."
+
+    config = create_graphrag_config(
+        root_dir=os.getcwd(),
+        llm={"type": "llama_cpp", "model": LLM_MODEL_PATH, "n_ctx": 4096},
+        embeddings={"type": "llama_cpp", "model": LLM_MODEL_PATH},
+    )
+
+    try:
+        # Run the async query function
+        result = asyncio.run(run_query_with_config(
+            config,
+            data_dir=INDEX_DIR,
+            query=user_query,
+        ))
+        return result
+    except Exception as e:
+        logger.error(f"GraphRAG query failed: {e}")
+        return f"Error during GraphRAG query: {e}"
 
 # --- Session Management ---
 SESSION_DB = 'sessions.db'
@@ -229,11 +252,8 @@ def generate_uat():
     if not user_query:
         return render_template("uat.html", query=user_query, result="Error: Please provide a query.")
     
-    # Load the GraphRAG index (in a real app, you'd load this once and cache it)
-    index = load_uat_index()
-    
-    # Query the GraphRAG index
-    result = query_uat_document(index, user_query)
+    # Run the GraphRAG query
+    result = query_graphrag(user_query)
     
     # Render the UAT page with the result
     return render_template("uat.html", query=user_query, result=result)
