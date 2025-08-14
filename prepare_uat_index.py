@@ -3,59 +3,76 @@
 Prepare UAT Index with GraphRAG (v2.4.0)
 =========================================
 
-This script is a wrapper that constructs and executes the correct
-`graphrag` command-line instruction to build the index.
+This script is the entry point for preparing the GraphRAG index
+using your UAT documents (user stories, test cases, YAML files).
+
+This version uses the correct `build_noun_graph` API for GraphRAG v2.4.0.
 """
 
 import os
 import logging
-import subprocess
+import asyncio
+from graphrag.index.operations import build_noun_graph
+from graphrag.data_model import Text, Document
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Configuration ---
-INPUT_DIR = "sample_uat_documents" # Directory containing your source documents
+INPUT_FILE_PATH = "processed_uat_documents.txt"
 OUTPUT_INDEX_DIR = "uat_graphrag_index"
 LLM_MODEL_PATH = "path/to/your/model.gguf" # TODO: Update this path
 
 # --- Main Indexing Logic ---
-def main():
+async def main():
     """
-    Main function to prepare the GraphRAG index.
+    Main async function to prepare the GraphRAG index.
     """
     logger.info("Starting GraphRAG UAT Index Preparation...")
 
-    if not os.path.isdir(INPUT_DIR):
-        logger.error(f"Input directory not found: {INPUT_DIR}")
-        logger.info("Please create this directory and place your documents inside.")
+    if not os.path.exists(INPUT_FILE_PATH):
+        logger.error(f"Input file not found: {INPUT_FILE_PATH}")
+        logger.info("Please run 'simple_document_processor.py' first.")
         return
 
     os.makedirs(OUTPUT_INDEX_DIR, exist_ok=True)
     logger.info(f"Output index directory: {OUTPUT_INDEX_DIR}")
 
-    # --- 1. Construct the GraphRAG command ---
-    command = [
-        "python3.10", "-m", "graphrag.cli",
-        "--root", ".",
-        "--data", INPUT_DIR,
-        "--output", OUTPUT_INDEX_DIR,
-        "--llm", "llama_cpp",
-        "--llm-model", LLM_MODEL_PATH,
-        "--embeddings-llm", "llama_cpp",
-        "--embeddings-llm-model", LLM_MODEL_PATH,
-        "index",
-    ]
-
-    # --- 2. Run the Indexing Command ---
-    logger.info("Executing GraphRAG command:")
-    logger.info(" ".join(command))
-    
+    # --- 1. Load the text data ---
+    logger.info(f"Loading text data from: {INPUT_FILE_PATH}")
     try:
-        subprocess.run(command, check=True)
+        with open(INPUT_FILE_PATH, 'r', encoding='utf-8') as f:
+            input_text = f.read()
+        logger.info(f"Loaded {len(input_text)} characters of text data.")
+    except Exception as e:
+        logger.error(f"Failed to load input file: {e}")
+        return
+
+    # --- 2. Create a Document object ---
+    document = Document(
+        id="uat_documents",
+        text=Text(
+            content=input_text,
+            encoding="utf-8",
+            language="en-US",
+            sentences=[],
+            tokens=[]
+        )
+    )
+
+    # --- 3. Run the Indexing Pipeline ---
+    logger.info("Starting indexing process... (This may take a while)")
+    try:
+        # This is a simplified call. You may need to pass more parameters
+        # depending on your specific needs and the GraphRAG API.
+        await build_noun_graph(
+            [document],
+            OUTPUT_INDEX_DIR,
+            # You may need to configure the LLM here
+        )
         logger.info("Indexing process completed successfully.")
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         logger.error(f"Indexing process failed: {e}")
         return
 
@@ -63,4 +80,4 @@ def main():
 
 # --- Entry Point ---
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

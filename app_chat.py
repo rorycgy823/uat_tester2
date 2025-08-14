@@ -33,37 +33,29 @@ llm = None
 PROMPT_TEMPLATE = "Instruct: {prompt}\nOutput:"
 
 # --- GraphRAG Integration ---
-from graphrag.query.cli import run_query_with_config
-from graphrag.config import create_graphrag_config
-import asyncio
+import subprocess
 
 def query_graphrag(user_query):
     """
-    Runs a GraphRAG query and returns the result.
+    Runs the GraphRAG query script as a subprocess and returns the result.
     """
-    INDEX_DIR = "uat_graphrag_index"
-    LLM_MODEL_PATH = "path/to/your/model.gguf" # TODO: Update this path
-
-    if not os.path.exists(INDEX_DIR):
-        return "Error: GraphRAG index not found. Please run 'prepare_uat_index.py' first."
-
-    config = create_graphrag_config(
-        root_dir=os.getcwd(),
-        llm={"type": "llama_cpp", "model": LLM_MODEL_PATH, "n_ctx": 4096},
-        embeddings={"type": "llama_cpp", "model": LLM_MODEL_PATH},
-    )
-
+    command = ["python3.10", "query_uat_index.py", user_query]
+    
     try:
-        # Run the async query function
-        result = asyncio.run(run_query_with_config(
-            config,
-            data_dir=INDEX_DIR,
-            query=user_query,
-        ))
-        return result
-    except Exception as e:
-        logger.error(f"GraphRAG query failed: {e}")
-        return f"Error during GraphRAG query: {e}"
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        logger.error(f"GraphRAG query script failed: {e}")
+        logger.error(f"Stderr: {e.stderr}")
+        return f"Error running GraphRAG query: {e.stderr}"
+    except FileNotFoundError:
+        logger.error("Error: 'python3.10' command not found. Make sure it's in your PATH.")
+        return "Error: Python 3.10 interpreter not found."
 
 # --- Session Management ---
 SESSION_DB = 'sessions.db'
