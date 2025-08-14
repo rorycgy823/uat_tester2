@@ -13,7 +13,7 @@ import os
 import logging
 import asyncio
 from graphrag.config import create_graphrag_config
-from graphrag.index import run_pipeline_with_config
+from graphrag.index.operations import run_pipeline_with_config
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
