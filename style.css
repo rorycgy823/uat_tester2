@@ -40,24 +40,33 @@ body {
     color: #333;
 }
 
+.new-chat-button {
+    display: block;
+    background-color: #007bff;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    text-align: center;
+    margin-top: 10px;
+    transition: background-color 0.3s;
+}
+
+.new-chat-button:hover {
+    background-color: #0056b3;
+}
+
 .session-list {
     overflow-y: auto;
     flex-grow: 1;
 }
 
-.session-item-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-}
-
 .session-item {
-    flex-grow: 1;
     display: block;
     padding: 12px 15px;
     color: #333;
     text-decoration: none;
+    border-bottom: 1px solid #eee;
     transition: background-color 0.2s;
     white-space: nowrap;
     overflow: hidden;
@@ -68,29 +77,33 @@ body {
     background-color: #e9e9eb;
 }
 
+.session-item-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+}
+
+.session-item-container:hover .delete-button {
+    opacity: 1;
+}
+
+.delete-button {
+    color: #ff4d4d;
+    text-decoration: none;
+    padding: 12px 15px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.delete-button:hover {
+    color: #cc0000;
+}
+
 .session-item.active {
     background-color: #4a4a8a;
     color: white;
     font-weight: bold;
-}
-
-.delete-form {
-    margin: 0;
-    padding: 0 10px;
-}
-
-.delete-button {
-    background: none;
-    border: none;
-    color: #999;
-    cursor: pointer;
-    font-size: 1.2em;
-    padding: 12px 5px;
-    transition: color 0.2s;
-}
-
-.delete-button:hover {
-    color: #ff4d4d;
 }
 
 /* Main Chat Container */
@@ -114,21 +127,6 @@ body {
 .chat-header h2 {
     margin: 0;
     font-size: 1.2em;
-}
-
-.new-session-button {
-    background-color: #007bff;
-    color: white;
-    padding: 8px 15px;
-    border-radius: 5px;
-    text-decoration: none;
-    font-size: 0.9em;
-    margin-right: 10px;
-    transition: background-color 0.3s;
-}
-
-.new-session-button:hover {
-    background-color: #0056b3;
 }
 
 .save-button {
@@ -157,34 +155,10 @@ body {
     line-height: 1;
     vertical-align: middle;
     transition: background-color 0.3s;
-    border: none;
-    cursor: pointer;
 }
 
 .settings-button:hover {
     background-color: #555;
-}
-
-/* Prompt Template Settings Section */
-.prompt-settings-section {
-    background-color: #f9f9f9;
-    border-bottom: 1px solid #ddd;
-    padding: 15px 20px;
-}
-
-.prompt-settings-section p {
-    margin: 5px 0 10px 0;
-    font-size: 0.9em;
-    color: #666;
-}
-
-.prompt-settings-section textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    font-family: monospace;
-    font-size: 0.9em;
 }
 
 /* Chat Box */

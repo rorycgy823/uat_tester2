@@ -16,9 +16,6 @@ from werkzeug.utils import secure_filename
 import socket
 import shelve
 from datetime import datetime
-# Import the GraphRAG query logic (placeholder for now)
-# In a full implementation, this would be the actual GraphRAG query engine
-# For now, we'll simulate it.
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -32,43 +29,12 @@ app.secret_key = 'supersecretkey'
 llm = None
 PROMPT_TEMPLATE = "Instruct: {prompt}\nOutput:"
 
-# --- GraphRAG Integration ---
-import subprocess
-
-def query_graphrag(user_query):
-    """
-    Runs the GraphRAG query script as a subprocess and returns the result.
-    """
-    command = ["python3.10", "query_uat_index.py", user_query]
-    
-    try:
-        result = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        logger.error(f"GraphRAG query script failed: {e}")
-        logger.error(f"Stderr: {e.stderr}")
-        return f"Error running GraphRAG query: {e.stderr}"
-    except FileNotFoundError:
-        logger.error("Error: 'python3.10' command not found. Make sure it's in your PATH.")
-        return "Error: Python 3.10 interpreter not found."
-
 # --- Session Management ---
 SESSION_DB = 'sessions.db'
 
 def get_all_sessions():
-    """Returns a list of (session_id, display_name) tuples, sorted by recency."""
     with shelve.open(SESSION_DB) as db:
-        # Sort by the timestamp prefix in the session_id (format: YYYYMMDD-HHMM_...)
-        return sorted(
-            [(sid, sid.split('_', 1)[1] if '_' in sid else sid) for sid in db.keys()],
-            key=lambda x: x[0],
-            reverse=True
-        )
+        return sorted(db.keys(), reverse=True)
 
 def save_session(session_id, history):
     with shelve.open(SESSION_DB) as db:
@@ -79,7 +45,6 @@ def load_session(session_id):
         return db.get(session_id, [])
 
 def delete_session(session_id):
-    """Deletes a session from the database."""
     with shelve.open(SESSION_DB) as db:
         if session_id in db:
             del db[session_id]
@@ -156,32 +121,26 @@ def generate_response(prompt, max_tokens):
 # --- Web UI Routes ---
 @app.route('/')
 def main_page():
-    if 'session_id' not in session:
-        session['session_id'] = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    if 'session_id' not in session or not session['session_id']:
+        # Start a new, unsaved session
+        session['session_id'] = None 
         session['chat_history'] = []
     
     return render_template("index.html", 
                            sessions=get_all_sessions(),
-                           current_session_id=session['session_id'],
-                           history=session['chat_history'],
-                           prompt_template=PROMPT_TEMPLATE)
+                           current_session_id=session.get('session_id'),
+                           history=session.get('chat_history', []))
 
-@app.route('/uat_generator')
-def uat_generator():
-    """Route to display the UAT generation page."""
-    return render_template("uat.html", query="", result=None)
+@app.route('/new_chat')
+def new_chat():
+    session.pop('session_id', None)
+    session.pop('chat_history', None)
+    return redirect(url_for('main_page'))
 
 @app.route('/session/<session_id>')
 def view_session(session_id):
     session['session_id'] = session_id
     session['chat_history'] = load_session(session_id)
-    return redirect(url_for('main_page'))
-
-@app.route('/new_session')
-def new_session():
-    """Starts a new chat session."""
-    session.pop('session_id', None)
-    session.pop('chat_history', None)
     return redirect(url_for('main_page'))
 
 @app.route('/ask', methods=['POST'])
@@ -202,28 +161,31 @@ def save_current_session():
     """Saves the current chat history with a user-friendly, URL-safe name."""
     history = session.get('chat_history', [])
     if history:
-        # Create a name from the first user prompt
-        first_prompt = history[0].replace('Instruct:', '').replace('\nOutput:', '').strip()
-        
-        # Make the name URL-safe and add a timestamp for uniqueness
-        safe_name = secure_filename(first_prompt[:30])
-        session_id = f"{datetime.now().strftime('%Y%m%d-%H%M')}_{safe_name}"
+        # Use existing session_id if it's already saved, otherwise create a new one
+        session_id = session.get('session_id')
+        if not session_id:
+            first_prompt = history[0].replace('Instruct:', '').replace('\nOutput:', '').strip()
+            safe_name = secure_filename(first_prompt[:30])
+            session_id = f"{datetime.now().strftime('%Y%m%d-%H%M')}_{safe_name}"
         
         save_session(session_id, history)
-        
-        # Start a new session after saving
-        return redirect(url_for('new_session'))
+        session['session_id'] = session_id # Ensure session_id is set
         
     return redirect(url_for('main_page'))
 
-@app.route('/delete_session/<session_id>', methods=['POST'])
+@app.route('/delete_session/<session_id>', methods=['GET'])
 def delete_session_route(session_id):
-    """Deletes a saved session."""
+    """Deletes a specific session."""
     delete_session(session_id)
-    # If we were viewing the deleted session, start a new one
+    # If the deleted session was the active one, start a new chat
     if session.get('session_id') == session_id:
-        return redirect(url_for('new_session'))
+        return redirect(url_for('new_chat'))
     return redirect(url_for('main_page'))
+
+@app.route('/settings', methods=['GET'])
+def settings_page():
+    """Displays the settings page."""
+    return render_template("settings.html", prompt_template=PROMPT_TEMPLATE)
 
 @app.route('/update_settings', methods=['POST'])
 def update_settings():
@@ -232,21 +194,7 @@ def update_settings():
     new_template = request.form.get('prompt_template')
     if new_template:
         PROMPT_TEMPLATE = new_template
-    return redirect(url_for('main_page'))
-
-@app.route('/generate_uat', methods=['POST'])
-def generate_uat():
-    """Route to handle UAT generation requests."""
-    user_query = request.form.get('query', '')
-    
-    if not user_query:
-        return render_template("uat.html", query=user_query, result="Error: Please provide a query.")
-    
-    # Run the GraphRAG query
-    result = query_graphrag(user_query)
-    
-    # Render the UAT page with the result
-    return render_template("uat.html", query=user_query, result=result)
+    return redirect(url_for('settings_page'))
 
 # --- Custom Server with Port Reuse ---
 class ReusableThreadedWSGIServer(ThreadedWSGIServer):
