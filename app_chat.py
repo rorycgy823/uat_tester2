@@ -37,8 +37,6 @@ from graphrag.query.cli import run_query_with_config
 from graphrag.config import create_graphrag_config
 import asyncio
 
-# This is a simplified integration. In a production app, you might want to
-# manage the asyncio event loop more carefully.
 def query_graphrag(user_query):
     """
     Runs a GraphRAG query and returns the result.
