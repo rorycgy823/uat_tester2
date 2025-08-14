@@ -16,6 +16,9 @@ from werkzeug.utils import secure_filename
 import socket
 import shelve
 from datetime import datetime
+# Import the GraphRAG query logic (placeholder for now)
+# In a full implementation, this would be the actual GraphRAG query engine
+# For now, we'll simulate it.
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,12 +32,30 @@ app.secret_key = 'supersecretkey'
 llm = None
 PROMPT_TEMPLATE = "Instruct: {prompt}\nOutput:"
 
+# --- GraphRAG Integration (Placeholder) ---
+# This would be replaced with actual GraphRAG loading and querying logic
+def load_uat_index():
+    """Placeholder for loading the GraphRAG index."""
+    # In a real implementation, this would load the index from disk
+    return "mock_index"
+
+def query_uat_document(index, user_query):
+    """Placeholder for querying the GraphRAG index."""
+    # In a real implementation, this would query the index
+    return f"Generated UAT document for query: '{user_query}'\n\n[This is a placeholder response from the GraphRAG system. In a full implementation, this would contain the actual generated UAT content based on your indexed documents.]"
+
 # --- Session Management ---
 SESSION_DB = 'sessions.db'
 
 def get_all_sessions():
+    """Returns a list of (session_id, display_name) tuples, sorted by recency."""
     with shelve.open(SESSION_DB) as db:
-        return sorted(db.keys(), reverse=True)
+        # Sort by the timestamp prefix in the session_id (format: YYYYMMDD-HHMM_...)
+        return sorted(
+            [(sid, sid.split('_', 1)[1] if '_' in sid else sid) for sid in db.keys()],
+            key=lambda x: x[0],
+            reverse=True
+        )
 
 def save_session(session_id, history):
     with shelve.open(SESSION_DB) as db:
@@ -43,6 +64,12 @@ def save_session(session_id, history):
 def load_session(session_id):
     with shelve.open(SESSION_DB) as db:
         return db.get(session_id, [])
+
+def delete_session(session_id):
+    """Deletes a session from the database."""
+    with shelve.open(SESSION_DB) as db:
+        if session_id in db:
+            del db[session_id]
 
 # --- Model Loading ---
 def load_model():
@@ -123,12 +150,25 @@ def main_page():
     return render_template("index.html", 
                            sessions=get_all_sessions(),
                            current_session_id=session['session_id'],
-                           history=session['chat_history'])
+                           history=session['chat_history'],
+                           prompt_template=PROMPT_TEMPLATE)
+
+@app.route('/uat_generator')
+def uat_generator():
+    """Route to display the UAT generation page."""
+    return render_template("uat.html", query="", result=None)
 
 @app.route('/session/<session_id>')
 def view_session(session_id):
     session['session_id'] = session_id
     session['chat_history'] = load_session(session_id)
+    return redirect(url_for('main_page'))
+
+@app.route('/new_session')
+def new_session():
+    """Starts a new chat session."""
+    session.pop('session_id', None)
+    session.pop('chat_history', None)
     return redirect(url_for('main_page'))
 
 @app.route('/ask', methods=['POST'])
@@ -159,15 +199,18 @@ def save_current_session():
         save_session(session_id, history)
         
         # Start a new session after saving
-        session.pop('session_id', None)
-        session.pop('chat_history', None)
+        return redirect(url_for('new_session'))
         
     return redirect(url_for('main_page'))
 
-@app.route('/settings', methods=['GET'])
-def settings_page():
-    """Displays the settings page."""
-    return render_template("settings.html", prompt_template=PROMPT_TEMPLATE)
+@app.route('/delete_session/<session_id>', methods=['POST'])
+def delete_session_route(session_id):
+    """Deletes a saved session."""
+    delete_session(session_id)
+    # If we were viewing the deleted session, start a new one
+    if session.get('session_id') == session_id:
+        return redirect(url_for('new_session'))
+    return redirect(url_for('main_page'))
 
 @app.route('/update_settings', methods=['POST'])
 def update_settings():
@@ -176,7 +219,24 @@ def update_settings():
     new_template = request.form.get('prompt_template')
     if new_template:
         PROMPT_TEMPLATE = new_template
-    return redirect(url_for('settings_page'))
+    return redirect(url_for('main_page'))
+
+@app.route('/generate_uat', methods=['POST'])
+def generate_uat():
+    """Route to handle UAT generation requests."""
+    user_query = request.form.get('query', '')
+    
+    if not user_query:
+        return render_template("uat.html", query=user_query, result="Error: Please provide a query.")
+    
+    # Load the GraphRAG index (in a real app, you'd load this once and cache it)
+    index = load_uat_index()
+    
+    # Query the GraphRAG index
+    result = query_uat_document(index, user_query)
+    
+    # Render the UAT page with the result
+    return render_template("uat.html", query=user_query, result=result)
 
 # --- Custom Server with Port Reuse ---
 class ReusableThreadedWSGIServer(ThreadedWSGIServer):
