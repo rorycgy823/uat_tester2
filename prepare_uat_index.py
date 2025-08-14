@@ -13,7 +13,6 @@ import os
 import logging
 import asyncio
 from graphrag.index.operations import build_noun_graph
-from graphrag.data_model import Text, Document
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,35 +38,12 @@ async def main():
     os.makedirs(OUTPUT_INDEX_DIR, exist_ok=True)
     logger.info(f"Output index directory: {OUTPUT_INDEX_DIR}")
 
-    # --- 1. Load the text data ---
-    logger.info(f"Loading text data from: {INPUT_FILE_PATH}")
-    try:
-        with open(INPUT_FILE_PATH, 'r', encoding='utf-8') as f:
-            input_text = f.read()
-        logger.info(f"Loaded {len(input_text)} characters of text data.")
-    except Exception as e:
-        logger.error(f"Failed to load input file: {e}")
-        return
-
-    # --- 2. Create a Document object ---
-    document = Document(
-        id="uat_documents",
-        text=Text(
-            content=input_text,
-            encoding="utf-8",
-            language="en-US",
-            sentences=[],
-            tokens=[]
-        )
-    )
-
-    # --- 3. Run the Indexing Pipeline ---
+    # --- Run the Indexing Pipeline ---
     logger.info("Starting indexing process... (This may take a while)")
     try:
-        # This is a simplified call. You may need to pass more parameters
-        # depending on your specific needs and the GraphRAG API.
+        # For this version of GraphRAG, we pass the file path directly
         await build_noun_graph(
-            [document],
+            [INPUT_FILE_PATH],
             OUTPUT_INDEX_DIR,
             # You may need to configure the LLM here
         )
