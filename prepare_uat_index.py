@@ -6,7 +6,7 @@ Prepare UAT Index with GraphRAG (v2.4.0)
 This script is the entry point for preparing the GraphRAG index
 using your UAT documents (user stories, test cases, YAML files).
 
-This version uses the correct `build_noun_graph` API for GraphRAG v2.4.0.
+This version uses the correct `build_noun_graph.run` API for GraphRAG v2.4.0.
 """
 
 import os
@@ -38,14 +38,36 @@ async def main():
     os.makedirs(OUTPUT_INDEX_DIR, exist_ok=True)
     logger.info(f"Output index directory: {OUTPUT_INDEX_DIR}")
 
-    # --- Run the Indexing Pipeline ---
+    # --- 1. Create the configuration dictionary ---
+    # This is a simplified configuration. You can customize this further.
+    config = {
+        "llm": {
+            "type": "llama_cpp",
+            "model": LLM_MODEL_PATH,
+            "n_ctx": 4096,
+        },
+        "embeddings": {
+            "type": "llama_cpp",
+            "model": LLM_MODEL_PATH,
+        },
+        "chunks": {
+            "size": 1000,
+            "overlap": 100,
+        },
+        "input": {
+            "type": "text",
+            "files": [INPUT_FILE_PATH],
+        },
+    }
+
+    # --- 2. Run the Indexing Pipeline ---
     logger.info("Starting indexing process... (This may take a while)")
     try:
-        # For this version of GraphRAG, we pass the file path directly
-        await build_noun_graph(
-            [INPUT_FILE_PATH],
-            OUTPUT_INDEX_DIR,
-            # You may need to configure the LLM here
+        # Call the 'run' function within the 'build_noun_graph' module
+        await build_noun_graph.run(
+            config,
+            data_dir=OUTPUT_INDEX_DIR,
+            # You may need to pass other parameters here
         )
         logger.info("Indexing process completed successfully.")
     except Exception as e:
