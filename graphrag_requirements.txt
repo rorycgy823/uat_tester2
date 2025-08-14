@@ -1,0 +1,20 @@
+# Core GraphRAG library
+graphrag
+
+# Vector Database
+chromadb
+
+# For local LLM processing (compatible with llama-cpp-python)
+llama-cpp-python==0.2.56
+
+# Document processing libraries
+python-docx
+pandas
+openpyxl
+PyYAML
+
+# Asyncio support (often needed)
+asyncio-throttle
+
+# For progress bars during indexing
+tqdm
