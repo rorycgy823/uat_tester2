@@ -6,89 +6,74 @@ Query UAT Index with GraphRAG
 This script demonstrates how to load a pre-built GraphRAG index
 and use it to answer queries, which is the core of the UAT generation.
 
-This script will:
-1. Load the GraphRAG index from the local directory.
-2. Take a user query as input.
-3. Use the GraphRAG query engine to process the query.
-4. Return the structured results, which can then be formatted into a UAT document.
-
-This logic will later be integrated into the `app_chat.py` Flask application.
+This version uses the updated GraphRAG API.
 """
 
 import os
 import logging
-# from graphrag.query import load_index, create_query_engine # Example imports
+import asyncio
+from graphrag.query.cli import run_query_with_config
+from graphrag.config import create_graphrag_config
 
 # --- Basic Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Configuration ---
-# Directory where the GraphRAG index is stored (created by prepare_uat_index.py)
 INDEX_DIR = "uat_graphrag_index"
+LLM_MODEL_PATH = "path/to/your/model.gguf" # TODO: Update this path
 
 # --- Query Logic ---
-def load_uat_index():
+async def main(user_query):
     """
-    Loads the pre-built GraphRAG index from disk.
-    This should be done once when the application starts.
+    Main async function to query the GraphRAG index.
     """
-    logger.info(f"Loading GraphRAG index from: {INDEX_DIR}")
+    logger.info("Starting GraphRAG UAT Query...")
+
     if not os.path.exists(INDEX_DIR):
         logger.error(f"Index directory not found: {INDEX_DIR}")
-        logger.info("Please run 'prepare_uat_index.py' first to create the index.")
-        return None
+        logger.info("Please run 'prepare_uat_index.py' first.")
+        return
 
-    try:
-        # This is pseudo-code. The actual call will depend on the GraphRAG library's API.
-        # index = load_index(INDEX_DIR)
-        # query_engine = create_query_engine(index)
-        # logger.info("GraphRAG index loaded successfully.")
-        # return query_engine
-        logger.info("GraphRAG index loading logic would go here.")
-        return "mock_query_engine" # Placeholder
-    except Exception as e:
-        logger.error(f"Failed to load GraphRAG index: {e}")
-        return None
+    # --- 1. Create GraphRAG Configuration ---
+    # This configuration points to the existing index and specifies the query LLM.
+    config = create_graphrag_config(
+        root_dir=os.getcwd(),
+        llm={
+            "type": "llama_cpp",
+            "model": LLM_MODEL_PATH,
+            "n_ctx": 4096,
+        },
+        embeddings={
+            "type": "llama_cpp",
+            "model": LLM_MODEL_PATH,
+        },
+    )
 
-def query_uat_document(query_engine, user_query):
-    """
-    Queries the GraphRAG index with a user's request.
-    
-    Args:
-        query_engine: The loaded GraphRAG query engine.
-        user_query (str): The natural language query from the user.
-        
-    Returns:
-        str: The response from the GraphRAG query engine.
-    """
-    if not query_engine:
-        return "Error: GraphRAG index is not loaded."
-
+    # --- 2. Run the Query Pipeline ---
     logger.info(f"Processing user query: {user_query}")
     try:
-        # This is pseudo-code. The actual call will depend on the GraphRAG library's API.
-        # response = query_engine.query(user_query)
-        # return str(response)
-        logger.info("GraphRAG query logic would go here.")
-        return f"Mock response for query: '{user_query}'" # Placeholder
+        result = await run_query_with_config(
+            config,
+            data_dir=INDEX_DIR,
+            query=user_query,
+            # You can specify different query types here, e.g., "global" or "local"
+            # method="global", 
+        )
+        logger.info("Query process completed successfully.")
+        return result
     except Exception as e:
-        logger.error(f"Query failed: {e}")
-        return f"Error processing query: {e}"
+        logger.error(f"Query process failed: {e}")
+        return None
 
-# --- Example Usage ---
+# --- Entry Point ---
 if __name__ == '__main__':
-    # 1. Load the index (once)
-    engine = load_uat_index()
-    
-    # 2. Simulate a user query
-    # In the web app, this would come from an HTTP request
     sample_query = "Generate a UAT test case for user story: As a user, I want to reset my password."
     
-    # 3. Get the response
-    result = query_uat_document(engine, sample_query)
+    # Run the async main function
+    query_result = asyncio.run(main(sample_query))
     
-    # 4. Print the result
-    print("\n--- UAT Generation Result ---")
-    print(result)
-    print("-----------------------------\n")
+    if query_result:
+        print("\n--- UAT Generation Result ---")
+        print(query_result)
+        print("-----------------------------\n")
