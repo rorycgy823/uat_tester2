@@ -17,10 +17,15 @@
                 <a href="/" class="session-item {% if not current_session_id %}active{% endif %}">
                     + New Chat
                 </a>
-                {% for session_id in sessions %}
-                    <a href="/session/{{ session_id }}" class="session-item {% if session_id == current_session_id %}active{% endif %}">
-                        {{ session_id }}
-                    </a>
+                {% for session_id, display_name in sessions %}
+                    <div class="session-item-container">
+                        <a href="/session/{{ session_id }}" class="session-item {% if session_id == current_session_id %}active{% endif %}">
+                            {{ display_name }}
+                        </a>
+                        <form action="/delete_session/{{ session_id }}" method="post" class="delete-form" onsubmit="return confirm('Are you sure you want to delete this session?');">
+                            <button type="submit" class="delete-button">&#128465;</button>
+                        </form>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -30,12 +35,28 @@
             <div class="chat-header">
                 <h2>Phi-2 Conversational AI</h2>
                 <div>
+                    <a href="/new_session" class="new-session-button">New Session</a>
+                    <a href="/uat_generator" class="new-session-button" style="margin-right: 10px; background-color: #6c757d;">UAT Generator</a>
                     <form action="/save_session" method="post" style="display: inline; margin-right: 10px;">
                         <button type="submit" class="save-button">Save Session</button>
                     </form>
-                    <a href="/settings" class="settings-button">&#9881;</a>
+                    <button id="toggle-settings" class="settings-button">&#9881;</button>
                 </div>
             </div>
+            
+            <!-- Collapsible Prompt Template Settings -->
+            <div id="prompt-settings" class="prompt-settings-section" style="display: none;">
+                <h3 style="margin-top: 0;">Prompt Template</h3>
+                <p>Adjust the template used to instruct the AI. Use <code>{prompt}</code> for the user's input.</p>
+                <form action="/update_settings" method="post">
+                    <textarea name="prompt_template" rows="3" style="width: 100%;">{{ prompt_template }}</textarea>
+                    <br><br>
+                    <div class="controls">
+                        <input type="submit" value="Save Template" class="save-button">
+                    </div>
+                </form>
+            </div>
+
             <div class="chat-box" id="chat-box">
                 {% for message in history %}
                     {% if message.startswith('Instruct:') %}
@@ -82,6 +103,16 @@
             thinkingBubble.innerHTML = '<p>...</p>';
             chatBox.appendChild(thinkingBubble);
             chatBox.scrollTop = chatBox.scrollHeight;
+        });
+        
+        // Toggle prompt settings visibility
+        document.getElementById('toggle-settings').addEventListener('click', function() {
+            const settings = document.getElementById('prompt-settings');
+            if (settings.style.display === 'none') {
+                settings.style.display = 'block';
+            } else {
+                settings.style.display = 'none';
+            }
         });
     </script>
 </body>
