@@ -26,6 +26,20 @@
                 <h2>Prompt Template Settings</h2>
             </div>
             <div class="settings-content">
+                <h3>System Prompt</h3>
+                <p>
+                    The system prompt is used to define the AI's role and behavior.
+                    It is prepended to all conversations.
+                </p>
+                <form action="/update_system_prompt" method="post">
+                    <textarea name="system_prompt" rows="10" placeholder="Enter system prompt here...">{{ system_prompt or '' }}</textarea>
+                    <br><br>
+                    <div class="controls">
+                        <input type="submit" value="Save System Prompt">
+                    </div>
+                </form>
+                
+                <h3>Instruction Template</h3>
                 <p>
                     Here you can adjust the prompt template used to instruct the AI.
                     The string <code>{prompt}</code> will be replaced with your actual question.
